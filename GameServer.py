@@ -67,36 +67,48 @@ class EchoFactory(protocol.Factory):
         log = "new device from " + addr.host
         logger1.info(log)
         echo = Echo()
-        networkGroup.members[addr.host] = echo
         return echo
 
 
 class NetworkGroup():
 
     def __init__(self, device_list):
-        self.members = dict()
         self.tag_echo_table = dict()
         self.observer_echos = list()
         self.device_tags = device_list
         self.server_online = False
 
-    def processMsg(self, echo, msg_array):
-        for msg in msg_array:
-            temp_tag = self.findTag(echo, msg)
-            if(temp_tag != ''):
-                echo.tag = temp_tag
-                msg_array.remove(msg)
-        networkGroup.forwardMessageSequence(echo.tag, msg_array)
-
     def findTag(self, echo, data):
         # Find if the message contaions any tag
-        for tag in self.device_tags:
-            if("ADD_" + tag in data):
-                log = 'get device: ' + tag
-                logger2.info(log)
-                self.tag_echo_table[tag] = echo
-                return tag
-        return ''
+        if('ADD' in data):
+            for tag in self.device_tags:
+                if("ADD_" + tag in data):
+                    log = 'get device: ' + tag
+                    logger2.info(log)
+                    self.tag_echo_table[tag] = echo
+                    return True, tag
+        return False, ''
+
+    def findACK(self, data):
+        return ('ACK' in data)
+
+    def findOK(self, data):
+        return ('OK' in data)
+
+    def processMsg(self, echo, msg_array):
+        for msg in msg_array:
+            found, temp_tag = self.findTag(echo, msg)
+            if found:
+                echo.tag = temp_tag
+                msg_array.remove(msg)
+                continue
+            if self.findACK(data):
+                msg_array.remove(msg)
+                continue
+            if self.findOK(data):
+                msg_array.remove(msg)
+                continue
+        networkGroup.forwardMessageSequence(echo.tag, msg_array)
 
     def forwardMessageSequence(self, source_tag, msg_seq_list):
         seq_dict = dict()
