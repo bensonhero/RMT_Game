@@ -1,10 +1,18 @@
 from twisted.internet import protocol, reactor, endpoints, tksupport, defer
 from twisted.internet.task import deferLater
-from bidict import bidict
-from datetime import datetime
+from Tkinter import *
 import json
 import os
 import traceback
+import logging
+
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                    datefmt='%m-%d %H:%M',
+                    handlers=[logging.FileHandler('serverConfig.txt', 'w', 'utf-8'), ])
+
+logger1 = logging.getLogger('echo')
+logger2 = logging.getLogger('routing')
 
 
 class GameState():
@@ -32,12 +40,12 @@ class Echo(protocol.Protocol, object):
         my_addr = self.transport.getPeer().host
         log = ''
         if(self.tag == ''):
-            log = '[' + datetime.now().strftime("%H:%M:%S") + '] ' + \
-                'get: ' + repr(data) + ' from ' + my_addr
+            log = 'get: ' + repr(data) + ' from ' + my_addr
+
         else:
-            log = '[' + datetime.now().strftime("%H:%M:%S") + '] ' + \
-                'get: ' + repr(data) + ' from ' + self.tag
-        print log
+            log = 'get: ' + repr(data) + ' from ' + self.tag
+
+        logger1.info(log)
         # Split the received data into array
         msg_array = data.split(',')
         msg_array_sorted = filter(None, msg_array)
@@ -50,16 +58,14 @@ class Echo(protocol.Protocol, object):
                 my_name = self.transport.getPeer().host
             else:
                 my_name = self.tag
-            print '[' + datetime.now().strftime("%H:%M:%S") + '] ' + \
-                my_name + ' lost connection'
+            logger1.info(my_name + ' lost connection')
 
 
 class EchoFactory(protocol.Factory):
 
     def buildProtocol(self, addr):
-        log = '[' + datetime.now().strftime("%H:%M:%S") + '] ' + \
-            "new device from " + addr.host
-        print log
+        log = "new device from " + addr.host
+        logger1.info(log)
         echo = Echo()
         networkGroup.members[addr.host] = echo
         return echo
@@ -76,8 +82,6 @@ class NetworkGroup():
 
     def processMsg(self, echo, msg_array):
         for msg in msg_array:
-            if(msg == 'UPDATE_CONFIG'):
-
             temp_tag = self.findTag(echo, msg)
             if(temp_tag != ''):
                 echo.tag = temp_tag
@@ -88,9 +92,8 @@ class NetworkGroup():
         # Find if the message contaions any tag
         for tag in self.device_tags:
             if("ADD_" + tag in data):
-                log = '[' + datetime.now().strftime("%H:%M:%S") + \
-                    '] ' + 'get device: ' + tag
-                print log
+                log = 'get device: ' + tag
+                logger2.info(log)
                 self.tag_echo_table[tag] = echo
                 return tag
         return ''
@@ -124,7 +127,7 @@ class NetworkGroup():
                 else:
                     continue
         except KeyError:
-            print 'no such event or source'
+            logger2.info('no such event or source')
         except:
             traceback.print_exc()
         return ''
@@ -135,25 +138,68 @@ class NetworkGroup():
 
     def sendToTarget(self, target_tag, msg):
         if(target_tag in self.tag_echo_table.keys()):
-            log = '[' + datetime.now().strftime("%H:%M:%S") + '] ' + \
-                "send " + repr(msg) + " to " + target_tag
-            print log
+            log = "send " + repr(msg) + " to " + target_tag
+            logger2.info(log)
             target_tranport = self.tag_echo_table[target_tag].transport
             target_tranport.write(msg + '\n')
         else:
-            log = '[' + datetime.now().strftime("%H:%M:%S") + '] ' + \
-                "target " + target_tag + " not online."
-            print log
+            log = "target " + target_tag + " not online."
+            logger2.info(log)
 
+
+class OBUI():
+
+    def __init__(self, master, table):
+        self.tags = table
+        self.states = []
+        self.entrys = []
+        for i in range(len(table)):
+            Label(master, text=self.tags[i]).grid(row=i, sticky=E)
+            l = Label(master, background='red', text='Off-line')
+            l.grid(row=i, column=1)
+            self.states.append(l)
+            e = Entry(master)
+            e.grid(row=i, column=2)
+            self.entrys.append(e)
+
+            def buildButton(j):
+                Button(master, text='Send', command=lambda: self.sendToMember(j)).grid(
+                    row=i, column=3)
+            buildButton(i)
+        self.log = Label(master, text='server is ready')
+        self.log.grid(row=len(table), columnspan=4)
+        Button(master, text='Stop Server', command=self.closeServer).grid(
+            row=len(table) + 1, columnspan=4)
+
+    def sendToMember(self, index):
+        target_tag = self.tags[index]
+        data = self.entrys[index].get()
+        networkGroup.sendToTarget(target_tag, data)
+
+    def updateState(self, tag, state):
+        index = self.tags.index(tag)
+        if(state is True):
+            self.states[index].config(text='On-line', background='green')
+        else:
+            self.states[index].config(text='Off-line', background='red')
+
+    def closeServer(self):
+        networkGroup.server_online = False
+        root.destroy()
+        reactor.stop()
 
 roomConfig = json.load(open("RoomConfig.json"))
+print roomConfig
 routing = roomConfig["routing"]
 childDevices = roomConfig["childDevices"]
 default_states = roomConfig["gameStates"]
 
+root = Tk()
+Observer = OBUI(root, childDevices)
+tksupport.install(root)
 gameStates = GameState(default_states)
 networkGroup = NetworkGroup(childDevices)
 networkGroup.server_online = True
 reactor.listenTCP(55688, EchoFactory())
-print '[' + datetime.now().strftime("%H:%M:%S") + '] ' + "start the server"
+logging.info("start the server")
 reactor.run()

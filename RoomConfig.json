@@ -1,23 +1,23 @@
 {
-	"name":"test",
+	"name":"config",
 	"childDevices":
-		[
-		"pythonSender",
-		"pythonReceiver",
-		"cctvScreen",
-		"arduino",
-		"BGM_player"
-		],
-	"gameStates":{
+	[
+	"BGMPlayer1",
+	"LightControl",
+	"CCTVchamber1",
+	"CCTVchamber2",
+	"CCTVhome1",
+	"Scheduler"
+	],
+	"gameStates":
+	{
 		"room":0,
-		"chapter":0,
-		"painttouch":0
-		},
+		"chapter":0
+	},
 	"routing":
 	{
 		"pythonSender":
 		{
-			
 			"Door_01_close":
 			[
 				{
@@ -48,54 +48,6 @@
 				"action":
 				{
 					"pythonReceiver":"Go_into_0"
-				}
-				}
-			],
-			"Point_0_touch":
-			[
-				{
-				"requireState":{"painttouch":0},
-				"updateState":{"painttouch":1},
-				"action":
-				{
-				}
-				}
-			]
-		},
-		"arduino":
-		{
-			"ACK":
-			[
-				{
-				"requireState":{},
-				"updateState":{},
-				"action":
-				{
-					"ethernet_template":"ACK"
-				}
-				}
-			],
-			"On_button_0_pressed":
-			[
-				{
-				"requireState":{},
-				"updateState":{},
-				"action":
-				{
-					"pythonCommander":"DO_Send_message1",
-					"cctvScreen":"DO_Record"
-				}
-				}
-			],
-			"On_button_1_pressed":
-			[
-				{
-				"requireState":{},
-				"updateState":{},
-				"action":
-				{
-					"pythonCommander":"DO_Send_message2",
-					"cctvScreen":"DO_PlayVideo"
 				}
 				}
 			]
