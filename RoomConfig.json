@@ -4,15 +4,14 @@
 	[
 	"BGMPlayer1",
 	"BGMPlayer2",
-	"LightControl",
 	"CCTVchamber1",
 	"CCTVchamber2",
 	"CCTVhome1",
 	"Scheduler",
 	"Garden1",
 	"Garden2",
-	"Hoom1",
-	"Hoom2",
+	"Home1",
+	"Home2",
 	"Chamber1",
 	"Chamber2"
 	],
